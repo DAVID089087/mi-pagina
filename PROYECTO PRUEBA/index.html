@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Página Web</title>
+    <!-- TensorFlow.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <!-- MobileNet model -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <style>
+        .video-container {
+            width: 100%;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+        #webcam {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Bienvenidos a mi página</h1>
+    </header>
+    
+    <main>
+        <div class="video-container">
+            <video id="webcam" 
+                   autoplay 
+                   playsinline 
+                   muted
+                   width="640" 
+                   height="480">
+            </video>
+        </div>
+        
+        <div id="predictions" class="predictions-container">
+            <h2>Predicciones:</h2>
+            <div id="results">
+                <!-- Aquí se mostrarán los resultados del modelo -->
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Mi Página Web</p>
+    </footer>
+
+    <script>
+        async function setupCamera() {
+            const video = document.getElementById('webcam');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { exact: "environment" } // This requests the rear camera
+                    }
+                });
+                video.srcObject = stream;
+                
+                return new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        resolve(video);
+                    };
+                });
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                // Fallback to any available camera if rear camera is not available
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: true
+                    });
+                    video.srcObject = stream;
+                } catch (err) {
+                    console.error('Could not access any camera:', err);
+                }
+            }
+        }
+
+        let model = null;
+
+        async function loadModel() {
+            try {
+                // Load MobileNet model
+                model = await mobilenet.load();
+                console.log('MobileNet model loaded successfully');
+                // Start prediction loop once model is loaded
+                predictLoop();
+            } catch (error) {
+                console.error('Error loading MobileNet model:', error);
+            }
+        }
+
+        async function predictLoop() {
+            const video = document.getElementById('webcam');
+            const resultsDiv = document.getElementById('results');
+
+            if (model && video.readyState === 4) {
+                try {
+                    // Get predictions
+                    const predictions = await model.classify(video);
+                    
+                    // Display results
+                    resultsDiv.innerHTML = predictions
+                        .map(p => `${p.className}: ${(p.probability * 100).toFixed(2)}%`)
+                        .join('<br>');
+                } catch (error) {
+                    console.error('Error during prediction:', error);
+                }
+            }
+            
+            // Call again after a short delay
+            requestAnimationFrame(predictLoop);
+        }
+
+        // Start everything when page loads
+        window.addEventListener('load', async () => {
+            await setupCamera();
+            await loadModel();
+        });
+    </script>
+</body>
+</html>
